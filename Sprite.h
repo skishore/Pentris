@@ -1,7 +1,7 @@
 
 using namespace std;
 
-#include "SDL.h"
+#include "SDL/SDL.h"
 #include <algorithm>
 
 class Sprite {

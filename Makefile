@@ -2,9 +2,11 @@ TARGETS=	Gen/ntris
 
 PROJECT=	./
 
-CXXFLAGS=	-g -O2 `sdl-config --cflags`
+#CXXFLAGS=	-g -O2 `sdl-config --cflags`
+CXXFLAGS= -g -O2 -I/Library/Frameworks/SDL.framework/Headers
 
-LDFLAGS=	`sdl-config --libs`
+#LDFLAGS=	`sdl-config --libs`
+LDFLAGS=  -framework SDL -framework SDL_mixer -framework Cocoa
 
 SOURCES=	Pentris.cpp
 
@@ -57,7 +59,7 @@ Gen/%.o:		%.c
 	cc $(CXXFLAGS) -c -o $@ $<
 
 Gen/ntris:	$(FLOAT_OBJECTS)
-	g++ -o $@ $^ $(LDFLAGS)
+	g++ -o $@ $^ SDLMain.m $(LDFLAGS)
 
 Gen/%.d:		%.cpp
 	@mkdir -p $(dir $@)

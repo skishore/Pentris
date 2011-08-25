@@ -6,56 +6,56 @@ using namespace std;
 
 #define BITDEPTH 32
 // the intensity of the shading
-#define LAMBDA 0.15f
+#define LAMBDA 0.10f
 
 // color constants
 #define BLACK       0x00000000
-#define GRAY        0x00808080
-#define WHITE       0x00ffffff
-#define RED         0x00ff0000
-#define LIME        0x0000ff00
-#define BLUE        0x000000ff
-#define CYAN        0x0000ffff
-#define PURPLE      0x00800080
+#define GRAY        0x80808000
+#define WHITE       0xffffff00
+#define RED         0x0000ff00
+#define LIME        0x00ff0000
+#define BLUE        0xff000000
+#define CYAN        0xffff0000
+#define PURPLE      0x80008000
 #define YELLOW      0x00ffff00
-#define ORANGE      0x00ffa500
-#define DARKORANGE  0x00ff8c00
-#define ORANGERED   0x00ff4500
-#define TAN         0x00d2b48c
-#define SALMON      0x00fa8072
-#define DARKRED     0x00b21111
-#define PURPLERED   0x008b0011
-#define XLIGHTBLUE  0x0087ceeb
-#define LIGHTBLUE   0x004169e1
-#define PURPLEBLUE  0x0000008b
-#define HOTPINK     0x00ff00ff
-#define PLUM        0x00dda0dd
-#define ORCHID      0x00da70d6
-#define DARKPINK    0x009966cc
-#define TURQUOISE   0x0048d1cc
-#define DARKGREEN   0x0020b2aa
-#define GREEN       0x003cb371
-#define LIGHTGREEN  0x0098fb98
-#define XXXLITEGRAY 0x00dddddd
-#define XXLIGHTGRAY 0x00cccccc
-#define XLIGHTGRAY  0x00bbbbbb
-#define LIGHTGRAY   0x00aaaaaa
-#define GOLD        0x00ffd700
-#define STAIRCASE   0x00b8860b
+#define ORANGE      0x00a5ff00
+#define DARKORANGE  0x008cff00
+#define ORANGERED   0x0045ff00
+#define TAN         0x8cb4d200
+#define SALMON      0x7280fa00
+#define DARKRED     0x1111b200
+#define PURPLERED   0x11008b00
+#define XLIGHTBLUE  0xebce8700
+#define LIGHTBLUE   0xe1694100
+#define PURPLEBLUE  0x8b000000
+#define HOTPINK     0xff00ff00
+#define PLUM        0xdda0dd00
+#define ORCHID      0xd670da00
+#define DARKPINK    0xcc669900
+#define TURQUOISE   0xccd14800
+#define DARKGREEN   0xaab22000
+#define GREEN       0x71b33c00
+#define LIGHTGREEN  0x98fb9800
+#define XXXLITEGRAY 0xdddddd00
+#define XXLIGHTGRAY 0xcccccc00
+#define XLIGHTGRAY  0xbbbbbb00
+#define LIGHTGRAY   0xaaaaaa00
+#define GOLD        0x00d7ff00
+#define STAIRCASE   0x0b86b800
 
 // returns a color given RGB values
 unsigned int rgb(int red, int green, int blue) {
-    return (255<<24) + (red<<16) + (green<<8) + (blue);
+    return (blue<<24) + (green<<16) + (red<<8);
 }
 
 // mixes two 32-bit colors - the result should be color1*lambda + color2*(1-lambda)
 unsigned int mixedColor(unsigned int color1, unsigned int color2, float lambda) {
     // calculate the new blue
-    int blue = (color1%256)*lambda + (color2%256)*(1-lambda);
+    int blue = ((color1>>24)%256)*lambda + ((color2>>24)%256)*(1-lambda);
     // left-shift both colors by 8 to find the greens, then calculate new green
-    int green = ((color1>>8)%256)*lambda + ((color2>>8)%256)*(1-lambda);
+    int green = ((color1>>16)%256)*lambda + ((color2>>16)%256)*(1-lambda);
     // same for red
-    int red = ((color1>>16)%256)*lambda + ((color2>>16)%256)*(1-lambda);
+    int red = ((color1>>8)%256)*lambda + ((color2>>8)%256)*(1-lambda);
 
     blue = min(max(blue, 0), 255);
     green = min(max(green, 0), 255);
@@ -66,7 +66,7 @@ unsigned int mixedColor(unsigned int color1, unsigned int color2, float lambda) 
 }
 
 // takes an index and returns the corresponding color
-unsigned int rainbowColor(int index) {
+unsigned int oldCode(int index) {
     switch (index) {
         case 0:
             return WHITE;
@@ -129,14 +129,10 @@ unsigned int rainbowColor(int index) {
     }
 }
 
-unsigned int colorCode(int index) {
-    return mixedColor(WHITE, rainbowColor(index), 4.2*LAMBDA);
-}
-
 unsigned int difficultyColor(unsigned int oldColor, float difficulty) {
-    int blue = oldColor%256;
-    int green = (oldColor>>8)%256;
-    int red = (oldColor>>16)%256; 
+    int blue = (oldColor>>24)%256;
+    int green = (oldColor>>16)%256;
+    int red = (oldColor>>8)%256; 
 
     if (difficulty > 0) {
         unsigned int blueShift = rgb(green/2, red/2, 255);
@@ -147,3 +143,6 @@ unsigned int difficultyColor(unsigned int oldColor, float difficulty) {
     }
 }
 
+unsigned int colorCode(int index) {
+	return mixedColor(WHITE, oldCode(index), 0.4f);
+}

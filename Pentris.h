@@ -6,7 +6,7 @@ using namespace std;
 #include "PRG.h"
 #include <cstdlib>
 #include <cstdio>
-#include "SDL.h"
+#include "SDL/SDL.h"
 #include <unistd.h>
 #include "sys/time.h"
 
@@ -28,7 +28,7 @@ int SCREENHEIGHT;
 int frameCount;
 // every MAXFRAMECOUNT frames, frameCount resets - the value is 840 because we can time
 // actions with a period of up to 8 frames - 840 = LCM(1,2,3,4,5,6,7,8)
-#define MAXFRAMECOUNT 840
+#define MAXFRAMECOUNT 840000000
 
 // game loop constants
 #define FRAMERATE 60

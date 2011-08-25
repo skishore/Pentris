@@ -66,7 +66,7 @@ unsigned int mixedColor(unsigned int color1, unsigned int color2, float lambda) 
 }
 
 // takes an index and returns the corresponding color
-unsigned int colorCode(int index) {
+unsigned int oldCode(int index) {
     switch (index) {
         case 0:
             return WHITE;
@@ -143,3 +143,6 @@ unsigned int difficultyColor(unsigned int oldColor, float difficulty) {
     }
 }
 
+unsigned int colorCode(int index) {
+	return mixedColor(WHITE, oldCode(index), 0.4f);
+}

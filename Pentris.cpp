@@ -245,7 +245,7 @@ void gameLoop() {
             lastTime = curTime;
 
             if (curTime > lastSecond + TICKS_PER_SEC) {
-                cout << "FPS = " << 1.0f*numFrames*TICKS_PER_SEC/(curTime - lastSecond) << endl;                                
+                //cout << "FPS = " << 1.0f*numFrames*TICKS_PER_SEC/(curTime - lastSecond) << endl;                                
                 lastSecond = curTime;
                 numFrames = 1;
             } else {
