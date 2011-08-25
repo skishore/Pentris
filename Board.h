@@ -7,6 +7,7 @@ extern "C" {
 }
 #include "Color.h"
 #include "Sprite.cpp"
+#include <iostream>
 #include <list>
 #include <vector>
 
@@ -54,7 +55,7 @@ extern "C" {
 #define OVERLAP 5
 
 // this variable records how many frames go by before gravity is applied
-#define GRAVITY 36
+#define GRAVITY 1000000000
 // the maximum number of times a block can be shoved away from an obstacle
 #define MAXSHOVEAWAYS 2
 // the number of frames before a block sticks in one place
@@ -68,10 +69,16 @@ extern "C" {
 #define MOVEDOWN 3
 #define MOVELEFT 4
 #define MOVEDROP 5
-#define MOVEHOLD 6
-#define ENTER 7
-#define PAUSE 8
-#define ESCAPE 9
+#define ENTER 6
+#define PAUSE 7
+#define ESCAPE 8
+// Constants 9-34 are hold constants - record the value of the first and the
+// number of holds
+#define MOVEHOLD 9
+#define NUMHOLDS 27
+const int holdToQwerty[NUMHOLDS] = {16, 22, 4, 17, 19, 24, 20, 8, 14, 15,
+                                    0, 18, 3, 5, 6, 7, 9, 10, 11,
+                                    25, 23, 2, 21, 1, 13, 12, -1};
 
 // the number of blocks we preview
 #define PREVIEW 5
@@ -195,14 +202,14 @@ class Board {
         // keyboard actions which have already been taken - do not repeat
         bool rotated;
         bool dropped;
-        bool held;
+        bool held[NUMHOLDS];
         bool entered;
 
         // stores the information for the current block in player
         Block* curBlock;
         // types of the blocks in play and in hold
         int curBlockType;
-        int heldBlockType;
+        int heldBlockType[NUMHOLDS];
         // the blocks ahead, stored in a list - pushed right, popped left
         list<int> preview;
         // how many frames we are into the preview animation, and the displacement from the old block
@@ -211,11 +218,11 @@ class Board {
 
         // these booleans tell us how much to erase
         // true when the hold is used - redraw the hold
-        bool holdUsed;
+        bool holdUsed[NUMHOLDS];
         // if the board changes we redraw the entire thing
         bool boardChanged;
         // if a block was just held we use it to erase, not the current block
-        bool justHeld;
+        int lastHoldUsed;
         // array which contains the type of block in each square
         int board[NUMCOLS][NUMROWS];
         // array which stores the number of blocks in each row
@@ -227,6 +234,7 @@ class Board {
         Block* oldBlock;
         
         // pointers to the text sprites, and a flag which is true if we need to draw them
+        Sprite* font;
         Sprite* numbers;
         Sprite* paused;
         Sprite* gameover;    
@@ -245,7 +253,7 @@ class Board {
         // places a block on the board
         void placeBlock(Block*);
         // gets the next block for the player
-        void getNextBlock(bool=false);
+        void getNextBlock(int=-1);
         // checks whether a block is in legal position
         int checkBlock(Block*);
         // calculates how many squares this block can fall if dropped
@@ -260,7 +268,7 @@ class Board {
         // draws the GUI to the right of the board
         void drawGUI(SDL_Surface* sfc, bool=false, unsigned int=RED);
         // draws the hold block on the right
-        void drawHold(SDL_Surface* sfc, bool=false, bool=false, unsigned int=RED);
+        void drawHold(SDL_Surface* sfc, int hold, bool=false, bool=false, unsigned int=RED);
         // draws a Tetris block
         // the first bool flag asks if we are drawing the block or erasing it 
         // the second is set to true if we want to draw the block's shadow 

@@ -93,7 +93,7 @@ void initOnline(int state, int port, char* address) {
 }
 
 void initSDL() {
-    SCREENWIDTH = SQUAREWIDTH*NUMCOLS + SIDEBOARD;
+    SCREENWIDTH = SQUAREWIDTH*NUMCOLS + 11*SIDEBOARD;
     SCREENHEIGHT = SQUAREWIDTH*(NUMROWS - MAXBLOCKSIZE + 1);
     if (onlineMode != OFFLINE) 
         SCREENWIDTH = 2*SCREENWIDTH;
@@ -275,8 +275,95 @@ void gameLoop() {
     }
 }
 
+bool isHoldKey(SDLKey key, int* hold) {
+    switch (key) {
+        case SDLK_q:
+            *hold = 0;
+            return true;
+        case SDLK_w:
+            *hold = 1;
+            return true;
+        case SDLK_e:
+            *hold = 2;
+            return true;
+        case SDLK_r:
+            *hold = 3;
+            return true;
+        case SDLK_t:
+            *hold = 4;
+            return true;
+        case SDLK_y:
+            *hold = 5;
+            return true;
+        case SDLK_u:
+            *hold = 6;
+            return true;
+        case SDLK_i:
+            *hold = 7;
+            return true;
+        case SDLK_o:
+            *hold = 8;
+            return true;
+        case SDLK_p:
+            *hold = 9;
+            return true;
+        case SDLK_a:
+            *hold = 10;
+            return true;
+        case SDLK_s:
+            *hold = 11;
+            return true;
+        case SDLK_d:
+            *hold = 12;
+            return true;
+        case SDLK_f:
+            *hold = 13;
+            return true;
+        case SDLK_g:
+            *hold = 14;
+            return true;
+        case SDLK_h:
+            *hold = 15;
+            return true;
+        case SDLK_j:
+            *hold = 16;
+            return true;
+        case SDLK_k:
+            *hold = 17;
+            return true;
+        case SDLK_l:
+            *hold = 18;
+            return true;
+        case SDLK_z:
+            *hold = 19;
+            return true;
+        case SDLK_x:
+            *hold = 20;
+            return true;
+        case SDLK_c:
+            *hold = 21;
+            return true;
+        case SDLK_v:
+            *hold = 22;
+            return true;
+        case SDLK_b:
+            *hold = 23;
+            return true;
+        case SDLK_n:
+            *hold = 24;
+            return true;
+        case SDLK_m:
+            *hold = 25;
+            return true;
+        case SDLK_LSHIFT:
+            *hold = 26;
+            return true;
+    }
+    return false;
+}
+
 void HandleEvent(SDL_Event event, Board* board) {
-    int key;
+    int key, hold;
 
     switch (event.key.keysym.sym) {
         // translate the key pressed into one of the key codes
@@ -299,18 +386,15 @@ void HandleEvent(SDL_Event event, Board* board) {
         case SDLK_SPACE:
             key = MOVEDROP;
             break;
-        case SDLK_LSHIFT:
-            key = MOVEHOLD;
-            break;
-        case SDLK_c:
-            key = MOVEHOLD;
-            break;
         case SDLK_RETURN:
             key = ENTER;
             break;
-        case SDLK_p:
-            key = PAUSE;
-            break;
+        default:
+            if (isHoldKey(event.key.keysym.sym, &hold)) {
+                key = hold + MOVEHOLD;
+            } else {
+                return;
+            }
     }    
     
     switch (event.type) {

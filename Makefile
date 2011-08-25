@@ -13,6 +13,7 @@ SOURCES=	Pentris.cpp
 define copy-images
 cp blockData.dat Gen/blockData.dat
 cp multiplayerData.dat Gen/multiplayerData.dat
+cp font.bmp Gen/font.bmp
 cp numbers.bmp Gen/numbers.bmp
 cp gameover.bmp Gen/gameover.bmp
 cp paused.bmp Gen/paused.bmp

@@ -26,7 +26,9 @@ Board::Board(int x, int y, int square, int side, int n, Block** data, int mode) 
 
 void Board::loadSprites(SDL_Surface* sfc, int width, int height) {
     if (gameMode == SINGLEPLAYER) {
-        // in the one-player game, we use the numbers, gameover, and paused sprites   
+        // in the one-player game, we use the font, numbers, gameover, and paused sprites   
+        font = new Sprite();
+        font->loadSprite(9, 18, BITDEPTH, "font.bmp", 9, 26, sfc, width, height);
         numbers = new Sprite();
         numbers->loadSprite(8, 10, BITDEPTH, "numbers.bmp", 10, 2, sfc, width, height);
         gameover = new Sprite();
@@ -63,11 +65,13 @@ void Board::resetBoard() {
     // no commands have been given yet
     rotated = false;
     dropped = false;
-    held = false;
     entered = false;
 
     // still have a hold for this block
-    holdUsed = false;
+    for (int i = 0; i < NUMHOLDS; i++) {
+        held[i] = false;
+        holdUsed[i] = false;
+    }
 
     // to start off, the board is entirely BLACK
     for (int y = 0; y < NUMROWS; y++) {
@@ -81,13 +85,15 @@ void Board::resetBoard() {
     // the board has changed - redraw
     boardChanged = true;
     // no block was just held - we don't have to erase specially
-    justHeld = false;
+    lastHoldUsed = -1;
     // start the preview without animation
     preview.clear();
     previewAnim = 0;
     previewOffset = 0;
     // no block is held - type is -1, the null type
-    heldBlockType = -1;
+    for (int i = 0; i < NUMHOLDS; i++) {
+        heldBlockType[i] = -1;
+    }
     curBlockType = -1; 
     oldBlock = new Block();
     curBlock = NULL;
@@ -99,7 +105,7 @@ void Board::resetBoard() {
     }*/
 
     // reset the score and start the game
-    score = 0; combo = 0;
+    score = 308; combo = 0;
     attacks.clear();
     boardState = RESET;
 }
@@ -155,12 +161,14 @@ void Board::keyRelease(int key) {
         // a movement key was released, so remove it from moveDir
         moveDir->remove(key);
         // set the key's flag to false so we can rotate / drop / hold again        
-        if (key == MOVEUP) 
+        if (key == MOVEUP) {
             rotated = false;
-        else if (key == MOVEDROP) 
+        } else if (key == MOVEDROP) {
             dropped = false;
-        else if (key == MOVEHOLD) 
-            held = false;
+        } else if ((key >= MOVEHOLD) && (key < MOVEHOLD + NUMHOLDS)) {
+            int hold = key - MOVEHOLD;
+            held[hold] = false;
+        }
     }
 }
 
@@ -219,7 +227,7 @@ vector<int>* Board::doEvents(vector<int>* newEvents) {
             curBlock = NULL;
             i = i + 4;
         } else if (events[i] == GETNEXTBLOCK) {
-            getNextBlock((events[i+1] == 1));
+            getNextBlock(events[i+1]);
             if (boardState == GAMEOVER) {
                 if (crossEvents == NULL) crossEvents = new vector<int>();
                 crossEvents->push_back(VICTORY);
@@ -318,13 +326,14 @@ void Board::timeStep(int frame) {
                 dropped =  true;
                 return;
             }
-        } else if (*i == MOVEHOLD) {
-            if ((held == false) and (holdUsed == false)) {
+        } else if ((*i >= MOVEHOLD) && (*i < MOVEHOLD + NUMHOLDS)) {
+            int hold = *i - MOVEHOLD;
+            if ((held[hold] == false) and (holdUsed[hold] == false)) {
                 // get the next block by swapping
                 delete curBlock;
                 curBlock = NULL;
-                getNextBlock(true);
-                held = true;
+                getNextBlock(hold);
+                held[hold] = true;
                 return;
             }
         }        
@@ -511,32 +520,32 @@ void Board::placeBlock(Block* block) {
     }
 }
 
-void Board::getNextBlock(bool swap) {
+void Board::getNextBlock(int hold) {
     int b;
 
     // log this event in multiplayer games, except when it is called from queueBlock
     // when curBlockType == -1, this method was called from queueBlock, which is already logged
     if (gameMode == MULTIPLAYER) {
         events.push_back(GETNEXTBLOCK);
-        events.push_back(swap ? 1 : 0);
+        events.push_back(hold);
     }
 
-    if ((swap == false) or (heldBlockType == -1)) {
+    if ((hold < 0) or (heldBlockType[hold] == -1)) {
         // get the first element from the preview list - it is the new block
         b = preview.front();
         preview.pop_front();
 
-        if (swap == true) {
-            heldBlockType = curBlockType;
+        if (hold >= 0) {
+            heldBlockType[hold] = curBlockType;
         } 
         // make the preview scroll to the next block
         previewAnim = PREVIEWANIMFRAMES;
         previewOffset = (blockData[b]->height+1)*squareWidth/2;
     } else {
         // user swapped out block - do not change the preview list
-        b = heldBlockType;
+        b = heldBlockType[hold];
         // hold the current block
-        heldBlockType = curBlockType;
+        heldBlockType[hold] = curBlockType;
     }
 
     // record the new block type
@@ -561,12 +570,14 @@ void Board::getNextBlock(bool swap) {
         if (drawSprites) gameover->frameCol = 1;
     }
     
-    if (swap == false) {
+    if (hold < 0) {
         // if we just generated a new block, we can hold again
-        holdUsed = false;
+        for (int i = 0; i < NUMHOLDS; i++) {
+            holdUsed[i] = false;
+        }
     } else {
-        holdUsed = true;
-        justHeld = true;
+        holdUsed[hold] = true;
+        lastHoldUsed = hold;
     }
 }
 
@@ -688,7 +699,7 @@ void Board::draw(SDL_Surface* sfc) {
         } else {
             drawBoard(sfc);
         }
-        justHeld = false;
+        lastHoldUsed = -1;
     } else if ((boardState >= PAUSED) and (boardState < GAMEOVER)) {
         if (boardState == PAUSED) {
             redrawBoard(sfc);
@@ -718,12 +729,13 @@ void Board::draw(SDL_Surface* sfc) {
 void Board::drawBoard(SDL_Surface* sfc) {
     //if ((gameMode == MULTIPLAYER) and (drawSprites)) eraseAnimations(sfc);
 
-    if (justHeld == true) {
-        int xOffset = oldBlock->x-blockData[heldBlockType]->x;
-        int yOffset = oldBlock->y-blockData[heldBlockType]->y;
+    if (lastHoldUsed >= 0) {
+        int blockType = heldBlockType[lastHoldUsed];
+        int xOffset = oldBlock->x-blockData[blockType]->x;
+        int yOffset = oldBlock->y-blockData[blockType]->y;
 
-        drawBlock(sfc, blockData[heldBlockType], true, false, xOffset, yOffset, oldBlock->angle);
-        drawBlock(sfc, blockData[heldBlockType], true, false, xOffset, yOffset+oldBlock->rowsDropped, oldBlock->angle);
+        drawBlock(sfc, blockData[blockType], true, false, xOffset, yOffset, oldBlock->angle);
+        drawBlock(sfc, blockData[blockType], true, false, xOffset, yOffset+oldBlock->rowsDropped, oldBlock->angle);
     } else {
         drawBlock(sfc, oldBlock, true, false, 0, 0, 0);
         drawBlock(sfc, oldBlock, true, false, 0, oldBlock->rowsDropped, 0);
@@ -753,14 +765,14 @@ void Board::redrawBoard(SDL_Surface* sfc, bool tinted, unsigned int tint) {
     lineColor = mixedColor(WHITE, BLACK, LAMBDA);
     // on game over the screen reddens
     if (tinted == true) {
-        backColor = mixedColor(tint, backColor, LAMBDA);
+        backColor = mixedColor(tint, backColor, 2*LAMBDA);
         lineColor = mixedColor(tint, lineColor, LAMBDA);
         curBlock->color = mixedColor(tint, curBlock->color, LAMBDA);
         highestRow = 0;
     }
 
     // first clear the board with black
-    SDL_FillRectangle(sfc, xPos, yPos, xPos+squareWidth*NUMCOLS, yPos, boardHeight, BLACK);
+    SDL_FillRectangle(sfc, xPos, yPos, xPos+boardWidth + 10*sideBoard, yPos, boardHeight, backColor);
 
     // draw in the vertical grid lines
     for (int i = 0; i < NUMCOLS; i++) {
@@ -790,6 +802,9 @@ void Board::redrawBoard(SDL_Surface* sfc, bool tinted, unsigned int tint) {
     }
 
     drawGUI(sfc, tinted, tint);
+    for (int i = 0; i < NUMHOLDS; i++) {
+        drawHold(sfc, i, lastHoldUsed == i, tinted, tint);
+    }
     
     //if ((gameMode == MULTIPLAYER) and (drawSprites)) drawAnimations(sfc, tinted, tint);
 }
@@ -832,16 +847,12 @@ void Board::drawGUI(SDL_Surface* sfc, bool tinted, unsigned int tint) {
             listY += (blockData[*j]->height+2)*squareWidth/2;
         }    
     }
-    if ((holdUsed == true) || (previewAnim > 0) || (tinted == true)) {
-        // the following code executes when the held piece changes 
-        if (tinted == true) {
-            SDL_FillRectangle(sfc, xPos+squareWidth*NUMCOLS, yPos+yQueue+1, 
-                    xPos+boardWidth, yPos+yQueue+1, boardHeight-yQueue-2, mixedColor(tint, BLACK, 2*LAMBDA));
-        } else {
-            SDL_FillRectangle(sfc, xPos+squareWidth*NUMCOLS, yPos+yQueue+1, 
-                    xPos+boardWidth, yPos+yQueue+1, boardHeight-yQueue-2, BLACK);      
+    if ((lastHoldUsed >= 0) || (previewAnim > 0) || (tinted == true)) {
+        if (lastHoldUsed >= 0) {
+            drawHold(sfc, lastHoldUsed, true, tinted, tint);
         }
-        drawHold(sfc, holdUsed, tinted, tint);
+        // Redraw the shift hold shown underneath the preview
+        drawHold(sfc, NUMHOLDS - 1, holdUsed[NUMHOLDS-1], tinted, tint);
         
         previewAnim--;
         if (previewAnim == 0)
@@ -893,7 +904,7 @@ void Board::drawGUI(SDL_Surface* sfc, bool tinted, unsigned int tint) {
     }
 }
 
-void Board::drawHold(SDL_Surface* sfc, bool shadow, bool tinted, unsigned int tint) {
+void Board::drawHold(SDL_Surface* sfc, int hold, bool shadow, bool tinted, unsigned int tint) {
     float lambda;
     
     if (shadow == true) {
@@ -903,19 +914,65 @@ void Board::drawHold(SDL_Surface* sfc, bool shadow, bool tinted, unsigned int ti
         // draw the hold rectangle in the GUI to the right in white 
         lambda = 0.0f;
     }
-    int xOffset = xPos + squareWidth*NUMCOLS+squareWidth/2;
-    int yOffset = yPos + 5*(squareWidth/2)*(PREVIEW+2)+1;
-    if (tinted == true) {
-        SDL_FillRectangle(sfc, xOffset, yOffset, xOffset+5*squareWidth/2, yOffset, 4*squareWidth, mixedColor(tint, WHITE, 4*LAMBDA));
-        SDL_FillRectangle(sfc, xOffset+1, yOffset+1, xOffset+5*squareWidth/2-1, yOffset+1, 4*squareWidth-2, mixedColor(tint, BLACK, 2*LAMBDA));
+
+    // Determine the hold's position and size based on its index
+    int row, col;
+    if (hold < 10) {
+        row = 0;
+        col = hold;
+    } else if (hold < 19) {
+        row = 1;
+        col = hold - 10;
     } else {
-        SDL_FillRectangle(sfc, xOffset, yOffset, xOffset+5*squareWidth/2, yOffset, 4*squareWidth, mixedColor(BLACK, WHITE, lambda));
-        SDL_FillRectangle(sfc, xOffset+1, yOffset+1, xOffset+5*squareWidth/2-1, yOffset+1, 4*squareWidth-2, BLACK);
+        row = 2;
+        col = hold - 19;
     }
-    if (heldBlockType != -1) { 
-        xOffset = squareWidth*NUMCOLS + sideBoard/2 - 3*squareWidth/4;
-        yOffset += -yPos + 2*squareWidth - ((squareWidth/2)*blockData[heldBlockType]->height)/2;
-        drawSmallBlock(sfc, blockData[heldBlockType], xOffset, yOffset, (squareWidth/2), lambda, tinted);
+    int xOffset = xPos + squareWidth*NUMCOLS + squareWidth/2 + (col+1)*sideBoard + row*row*sideBoard/2;
+    int yOffset = yPos + 5*(squareWidth/2)+1 + row*6*squareWidth;
+    int holdWidth = 5*squareWidth/2;
+
+    // Special case the left-shift hold, shown at the far left of the bottom row
+    if (hold == NUMHOLDS - 1) {
+        xOffset = xPos + squareWidth*NUMCOLS + sideBoard + squareWidth/2;
+        holdWidth = 5*squareWidth/2 + sideBoard;
+    }
+
+    if (tinted == true) {
+        SDL_FillRectangle(sfc, xOffset, yOffset, xOffset+holdWidth, yOffset, 4*squareWidth, mixedColor(tint, WHITE, 4*LAMBDA));
+        SDL_FillRectangle(sfc, xOffset+1, yOffset+1, xOffset+holdWidth-1, yOffset+1, 4*squareWidth-2, mixedColor(tint, BLACK, 2*LAMBDA));
+        font->frameCol = 7;
+    } else {
+        SDL_FillRectangle(sfc, xOffset, yOffset, xOffset+holdWidth, yOffset, 4*squareWidth, mixedColor(BLACK, WHITE, lambda));
+        SDL_FillRectangle(sfc, xOffset+1, yOffset+1, xOffset+holdWidth-1, yOffset+1, 4*squareWidth-2, BLACK);
+        font->frameCol = (shadow ? 4 : 1);
+    }
+    font->x = xOffset + 4;
+    font->y = yOffset + 4;
+    if (hold < NUMHOLDS - 1) {
+      font->frameRow = holdToQwerty[hold] + 1;
+      font->draw(sfc);
+    } else {
+      font->frameRow = 19;
+      font->frameCol++;
+      font->draw(sfc);
+      font->x += 9;
+      font->frameRow = 8;
+      font->draw(sfc);
+      font->x += 9;
+      font->frameRow = 9;
+      font->draw(sfc);
+      font->x += 9;
+      font->frameRow = 6;
+      font->draw(sfc);
+      font->x += 9;
+      font->frameRow = 20;
+      font->draw(sfc);
+    }
+
+    if (heldBlockType[hold] != -1) { 
+        xOffset += holdWidth/2 - 3*squareWidth/4;
+        yOffset += -yPos + 2*squareWidth - ((squareWidth/2)*blockData[heldBlockType[hold]]->height)/2;
+        drawSmallBlock(sfc, blockData[heldBlockType[hold]], xOffset, yOffset, (squareWidth/2), lambda, tinted);
     }
 }
 
